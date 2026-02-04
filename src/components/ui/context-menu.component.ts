@@ -1,0 +1,95 @@
+import { Component, inject, computed, ElementRef, HostListener } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { TemplateStore } from '../../services/template.store';
+
+@Component({
+    selector: 'app-context-menu',
+    standalone: true,
+    imports: [CommonModule],
+    template: `
+    @if (store.contextMenu().isVisible) {
+      <div 
+        class="fixed z-50 bg-[#262c35] border border-[#434d5d] shadow-xl rounded-[6px] py-1 min-w-[180px] text-sm text-[#bbc1cb] flex flex-col"
+        [style.top.px]="store.contextMenu().y"
+        [style.left.px]="store.contextMenu().x"
+        (click)="$event.stopPropagation()"
+      >
+        <button 
+            (click)="togglePositioning()"
+            class="w-full text-left px-4 py-2 hover:bg-[#353d49] hover:text-white flex items-center gap-2 transition-colors duration-150"
+        >
+            <i class="pi pi-arrows-alt"></i>
+            {{ isAbsolute() ? 'Make Relative' : 'Make Absolute' }}
+        </button>
+
+        <button 
+            (click)="resetSizing()"
+            class="w-full text-left px-4 py-2 hover:bg-[#353d49] hover:text-white flex items-center gap-2 transition-colors duration-150"
+        >
+            <i class="pi pi-refresh"></i>
+            Reset Sizing
+        </button>
+
+        <button 
+            (click)="duplicate()"
+            class="w-full text-left px-4 py-2 hover:bg-[#353d49] hover:text-white flex items-center gap-2 transition-colors duration-150"
+        >
+            <i class="pi pi-copy"></i>
+            Duplicate
+        </button>
+        
+        <div class="h-[1px] bg-[#434d5d] my-1 mx-2"></div>
+        
+        <button 
+            (click)="deleteBlock()"
+            class="w-full text-left px-4 py-2 hover:bg-red-500/20 hover:text-red-400 text-red-400/80 flex items-center gap-2 transition-colors duration-150"
+        >
+            <i class="pi pi-trash"></i>
+            Delete Block
+        </button>
+      </div>
+     
+      <!-- Backdrop to close on click outside -->
+      <div class="fixed inset-0 z-40" (click)="store.closeContextMenu()"></div>
+    }
+  `
+})
+export class ContextMenuComponent {
+    store = inject(TemplateStore);
+
+    isAbsolute = computed(() => {
+        const id = this.store.contextMenu().blockId;
+        if (!id) return false;
+        const block = this.store.findBlock(this.store.rootBlock(), id);
+        return block?.styles['position'] === 'absolute';
+    });
+
+    togglePositioning() {
+        const id = this.store.contextMenu().blockId;
+        if (id) {
+            this.store.toggleBlockPositioning(id);
+        }
+    }
+
+    resetSizing() {
+        const id = this.store.contextMenu().blockId;
+        if (id) {
+            this.store.resetBlockSizing(id);
+        }
+    }
+
+    duplicate() {
+        const id = this.store.contextMenu().blockId;
+        if (id) {
+            this.store.duplicateBlock(id);
+        }
+    }
+
+    deleteBlock() {
+        const id = this.store.contextMenu().blockId;
+        if (id) {
+            this.store.deleteBlock(id);
+            this.store.closeContextMenu();
+        }
+    }
+}

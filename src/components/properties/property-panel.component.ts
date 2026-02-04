@@ -1,0 +1,485 @@
+import { Component, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { TemplateStore } from '../../services/template.store';
+import { CssStylesheetStore } from '../../services/css-stylesheet.store';
+import { TooltipDirective } from '../../directives/tooltip.directive';
+
+@Component({
+    selector: 'app-property-panel',
+    standalone: true,
+    imports: [CommonModule, FormsModule, TooltipDirective],
+    template: `
+    <div class="h-full overflow-y-auto bg-[#262c35] text-[#bbc1cb] select-none custom-scrollbar">
+      @if (store.selectedBlock(); as block) {
+        
+        <!-- Header -->
+        <div class="p-4 border-b border-[#434d5d] sticky top-0 bg-[#262c35] z-20 shadow-sm">
+          <div class="flex items-center justify-between">
+             <div class="flex items-center gap-3 overflow-hidden">
+                <div class="w-8 h-8 rounded bg-[#353d49] flex items-center justify-center text-[#7089a2] border border-[#434d5d] shrink-0 shadow-sm">
+                    <i class="pi" [class]="getTypeIcon(block.type)"></i>
+                </div>
+                <div class="overflow-hidden flex flex-col">
+                    <div class="font-bold text-sm truncate text-white leading-tight">{{ block.name }}</div>
+                    <div class="text-[10px] text-[#7e8a9c] font-mono leading-tight">{{ block.type }} • {{ block.id.slice(0,4) }}</div>
+                </div>
+             </div>
+          </div>
+        </div>
+
+        <div class="p-4 space-y-1">
+            
+            <!-- General -->
+            <details open class="group">
+                <summary class="flex items-center justify-between cursor-pointer py-2 text-xs font-bold text-[#7089a2] uppercase tracking-wider hover:text-[#bbc1cb] transition-colors list-none outline-none rounded px-2 -mx-2 hover:bg-[#353d49]/30">
+                    <span>General</span>
+                    <i class="pi pi-chevron-down transform group-open:rotate-180 transition-transform duration-200"></i>
+                </summary>
+                <div class="space-y-3 pt-2 pb-4 animate-fade-in">
+                     <div>
+                        <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Block Name</label>
+                        <input type="text" [appTooltip]="'Enter a name for this block'" [ngModel]="block.name" (ngModelChange)="update('name', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all placeholder-[#434d5d] shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30">
+                     </div>
+                     @if (block.type !== 'container' && block.type !== 'image') {
+                        <div>
+                            <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">{{ block.type === 'image' ? 'Image Source' : 'Content Text' }}</label>
+                            @if(block.type === 'textarea') {
+                                <textarea [appTooltip]="'Enter text content'" [ngModel]="block.content" (ngModelChange)="update('content', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all placeholder-[#434d5d] shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30 min-h-[80px] resize-y"></textarea>
+                            } @else {
+                                <input type="text" [appTooltip]="block.type === 'image' ? 'Enter image URL' : 'Enter text content'" [ngModel]="block.content" (ngModelChange)="update('content', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all placeholder-[#434d5d] shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30">
+                            }
+                        </div>
+                     }
+                </div>
+            </details>
+
+            <div class="h-px bg-[#434d5d]/50"></div>
+
+            <!-- Dimensions -->
+             <details open class="group">
+                <summary class="flex items-center justify-between cursor-pointer py-2 text-xs font-bold text-[#7089a2] uppercase tracking-wider hover:text-[#bbc1cb] transition-colors list-none outline-none rounded px-2 -mx-2 hover:bg-[#353d49]/30">
+                    <span>Dimensions</span>
+                    <i class="pi pi-chevron-down transform group-open:rotate-180 transition-transform duration-200"></i>
+                </summary>
+                <div class="grid grid-cols-2 gap-2 pt-2 pb-4 animate-fade-in">
+                    <div>
+                        <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Width</label>
+                        <div class="relative">
+                           <span class="absolute left-2 top-1.5 text-[#7e8a9c] text-[10px] pointer-events-none">W</span>
+                           <input type="text" [appTooltip]="'Set width (e.g. 100px, 50%)'" [ngModel]="getStyle(block, 'width')" (ngModelChange)="updateStyle('width', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all placeholder-[#434d5d] shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30 pl-6 text-right">
+                        </div>
+                    </div>
+                     <div>
+                        <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Height</label>
+                        <div class="relative">
+                           <span class="absolute left-2 top-1.5 text-[#7e8a9c] text-[10px] pointer-events-none">H</span>
+                           <input type="text" [appTooltip]="'Set height (e.g. 100px, 50%)'" [ngModel]="getStyle(block, 'height')" (ngModelChange)="updateStyle('height', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all placeholder-[#434d5d] shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30 pl-6 text-right">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Padding</label>
+                        <input type="text" [appTooltip]="'Set padding (e.g. 10px)'" [ngModel]="getStyle(block, 'padding')" (ngModelChange)="updateStyle('padding', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all placeholder-[#434d5d] shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30 text-right" placeholder="0px">
+                    </div>
+                     <div>
+                        <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Margin</label>
+                        <input type="text" [appTooltip]="'Set margin (e.g. 10px)'" [ngModel]="getStyle(block, 'margin')" (ngModelChange)="updateStyle('margin', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all placeholder-[#434d5d] shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30 text-right" placeholder="0px">
+                    </div>
+                </div>
+            </details>
+
+            <div class="h-px bg-[#434d5d]/50"></div>
+
+            <!-- Background -->
+            <details open class="group">
+                <summary class="flex items-center justify-between cursor-pointer py-2 text-xs font-bold text-[#7089a2] uppercase tracking-wider hover:text-[#bbc1cb] transition-colors list-none outline-none rounded px-2 -mx-2 hover:bg-[#353d49]/30">
+                    <span>Background</span>
+                    <i class="pi pi-chevron-down transform group-open:rotate-180 transition-transform duration-200"></i>
+                </summary>
+                <div class="space-y-3 pt-2 pb-4 animate-fade-in">
+                     <!-- Background Color -->
+                     <div>
+                        <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Color</label>
+                        <div class="flex items-center gap-2">
+                            <input type="color" [appTooltip]="'Pick background color'" [ngModel]="getStyle(block, 'backgroundColor')" (ngModelChange)="updateStyle('backgroundColor', $event)" class="w-8 h-8 p-0 bg-transparent border-none cursor-pointer rounded overflow-hidden">
+                            <input type="text" [appTooltip]="'Enter background color hex or name'" [ngModel]="getStyle(block, 'backgroundColor')" (ngModelChange)="updateStyle('backgroundColor', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all placeholder-[#434d5d] shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30 flex-1">
+                        </div>
+                    </div>
+
+                    <!-- Background Image -->
+                    <div>
+                        <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Image Source (URL)</label>
+                        <input type="text" [appTooltip]="'Enter image URL'" [ngModel]="getBgImage(block)" (ngModelChange)="updateBgImage($event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all placeholder-[#434d5d] shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30" placeholder="https://...">
+                    </div>
+
+                    <!-- Background Size -->
+                     <div>
+                        <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Size</label>
+                        <div class="grid grid-cols-2 gap-2">
+                             <select [ngModel]="getStyle(block, 'backgroundSize')" (ngModelChange)="updateStyle('backgroundSize', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all appearance-none cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.1)] pr-10 hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%237e8a9c%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25em_1.25em] bg-[position:right_0.5rem_center] bg-no-repeat">
+                                <option value="cover">Cover</option>
+                                <option value="contain">Contain</option>
+                                <option value="auto">Auto</option>
+                                <option value="100% 100%">Stretch</option>
+                            </select>
+                            <input type="text" [appTooltip]="'Custom size (e.g. 50% 50%)'" [ngModel]="getStyle(block, 'backgroundSize')" (ngModelChange)="updateStyle('backgroundSize', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all placeholder-[#434d5d] shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30" placeholder="Custom">
+                        </div>
+                    </div>
+
+                    <!-- Background Position -->
+                     <div>
+                        <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Position</label>
+                        <div class="grid grid-cols-2 gap-2">
+                             <select [ngModel]="getStyle(block, 'backgroundPosition')" (ngModelChange)="updateStyle('backgroundPosition', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all appearance-none cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.1)] pr-10 hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%237e8a9c%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25em_1.25em] bg-[position:right_0.5rem_center] bg-no-repeat">
+                                <option value="center">Center</option>
+                                <option value="top">Top</option>
+                                <option value="bottom">Bottom</option>
+                                <option value="left">Left</option>
+                                <option value="right">Right</option>
+                            </select>
+                            <input type="text" [appTooltip]="'Custom position (e.g. 10px 10px)'" [ngModel]="getStyle(block, 'backgroundPosition')" (ngModelChange)="updateStyle('backgroundPosition', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all placeholder-[#434d5d] shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30" placeholder="Custom">
+                        </div>
+                    </div>
+
+                    <!-- Background Repeat -->
+                    <div>
+                        <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Repeat</label>
+                        <select [ngModel]="getStyle(block, 'backgroundRepeat')" (ngModelChange)="updateStyle('backgroundRepeat', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all appearance-none cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.1)] pr-10 hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%237e8a9c%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25em_1.25em] bg-[position:right_0.5rem_center] bg-no-repeat">
+                            <option value="no-repeat">No Repeat</option>
+                            <option value="repeat">Repeat</option>
+                            <option value="repeat-x">Repeat X</option>
+                            <option value="repeat-y">Repeat Y</option>
+                        </select>
+                    </div>
+
+                </div>
+            </details>
+
+            <div class="h-px bg-[#434d5d]/50"></div>
+
+            <!-- Text -->
+            <details open class="group">
+                <summary class="flex items-center justify-between cursor-pointer py-2 text-xs font-bold text-[#7089a2] uppercase tracking-wider hover:text-[#bbc1cb] transition-colors list-none outline-none rounded px-2 -mx-2 hover:bg-[#353d49]/30">
+                    <span>Text</span>
+                    <i class="pi pi-chevron-down transform group-open:rotate-180 transition-transform duration-200"></i>
+                </summary>
+                <div class="space-y-3 pt-2 pb-4 animate-fade-in">
+                     <!-- Font Family -->
+                     <div>
+                        <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Font Family</label>
+                        <select [appTooltip]="'Select font family'" [ngModel]="getStyle(block, 'fontFamily')" (ngModelChange)="updateStyle('fontFamily', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all appearance-none cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.1)] pr-10 hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%237e8a9c%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25em_1.25em] bg-[position:right_0.5rem_center] bg-no-repeat">
+                            <option [value]="undefined">Default</option>
+                            <option value="sans-serif">Sans Serif</option>
+                            <option value="serif">Serif</option>
+                            <option value="monospace">Monospace</option>
+                            <option value="'Inter', sans-serif">Inter</option>
+                            <option value="'Roboto', sans-serif">Roboto</option>
+                            <option value="'Open Sans', sans-serif">Open Sans</option>
+                        </select>
+                    </div>
+
+                    <!-- Size & Weight -->
+                    <div class="grid grid-cols-2 gap-2">
+                         <div>
+                            <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Size</label>
+                            <input type="text" [appTooltip]="'Set font size (e.g. 16px)'" [ngModel]="getStyle(block, 'fontSize')" (ngModelChange)="updateStyle('fontSize', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all placeholder-[#434d5d] shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30">
+                         </div>
+                          <div>
+                            <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Weight</label>
+                            <select [appTooltip]="'Select font weight'" [ngModel]="getStyle(block, 'fontWeight')" (ngModelChange)="updateStyle('fontWeight', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all appearance-none cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.1)] pr-10 hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%237e8a9c%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25em_1.25em] bg-[position:right_0.5rem_center] bg-no-repeat">
+                                <option value="normal">Normal</option>
+                                <option value="bold">Bold</option>
+                                <option value="lighter">Light</option>
+                                <option value="900">Black</option>
+                            </select>
+                         </div>
+                    </div>
+
+                    <!-- Color & Align -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Color</label>
+                            <div class="flex items-center gap-2">
+                                <input type="color" [appTooltip]="'Pick text color'" [ngModel]="getStyle(block, 'color')" (ngModelChange)="updateStyle('color', $event)" class="w-8 h-8 p-0 bg-transparent border-none cursor-pointer rounded overflow-hidden">
+                                <input type="text" [appTooltip]="'Enter text color hex or name'" [ngModel]="getStyle(block, 'color')" (ngModelChange)="updateStyle('color', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all placeholder-[#434d5d] shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30 flex-1">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Align</label>
+                            <div class="flex gap-1">
+                                <button [appTooltip]="'Left Align'" class="h-8 rounded-[4px] bg-[#262c35] border border-[#353d49] text-[#7e8a9c] flex items-center justify-center transition-all hover:bg-[#353d49] hover:text-white hover:border-[#434d5d] flex-1" [class.bg-[#7089a2]]="getStyle(block, 'textAlign') === 'left' || !getStyle(block, 'textAlign')" [class.border-[#7089a2]]="getStyle(block, 'textAlign') === 'left' || !getStyle(block, 'textAlign')" [class.text-white]="getStyle(block, 'textAlign') === 'left' || !getStyle(block, 'textAlign')" [class.shadow-sm]="getStyle(block, 'textAlign') === 'left' || !getStyle(block, 'textAlign')" (click)="updateStyle('textAlign', 'left')"><i class="pi pi-align-left text-xs"></i></button>
+                                <button [appTooltip]="'Center Align'" class="h-8 rounded-[4px] bg-[#262c35] border border-[#353d49] text-[#7e8a9c] flex items-center justify-center transition-all hover:bg-[#353d49] hover:text-white hover:border-[#434d5d] flex-1" [class.bg-[#7089a2]]="getStyle(block, 'textAlign') === 'center'" [class.border-[#7089a2]]="getStyle(block, 'textAlign') === 'center'" [class.text-white]="getStyle(block, 'textAlign') === 'center'" [class.shadow-sm]="getStyle(block, 'textAlign') === 'center'" (click)="updateStyle('textAlign', 'center')"><i class="pi pi-align-center text-xs"></i></button>
+                                <button [appTooltip]="'Right Align'" class="h-8 rounded-[4px] bg-[#262c35] border border-[#353d49] text-[#7e8a9c] flex items-center justify-center transition-all hover:bg-[#353d49] hover:text-white hover:border-[#434d5d] flex-1" [class.bg-[#7089a2]]="getStyle(block, 'textAlign') === 'right'" [class.border-[#7089a2]]="getStyle(block, 'textAlign') === 'right'" [class.text-white]="getStyle(block, 'textAlign') === 'right'" [class.shadow-sm]="getStyle(block, 'textAlign') === 'right'" (click)="updateStyle('textAlign', 'right')"><i class="pi pi-align-right text-xs"></i></button>
+                                <button [appTooltip]="'Justify Align'" class="h-8 rounded-[4px] bg-[#262c35] border border-[#353d49] text-[#7e8a9c] flex items-center justify-center transition-all hover:bg-[#353d49] hover:text-white hover:border-[#434d5d] flex-1" [class.bg-[#7089a2]]="getStyle(block, 'textAlign') === 'justify'" [class.border-[#7089a2]]="getStyle(block, 'textAlign') === 'justify'" [class.text-white]="getStyle(block, 'textAlign') === 'justify'" [class.shadow-sm]="getStyle(block, 'textAlign') === 'justify'" (click)="updateStyle('textAlign', 'justify')"><i class="pi pi-align-justify text-xs"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </details>
+
+            <div class="h-px bg-[#434d5d]/50"></div>
+
+            <!-- Borders -->
+             <details class="group">
+                <summary class="flex items-center justify-between cursor-pointer py-2 text-xs font-bold text-[#7089a2] uppercase tracking-wider hover:text-[#bbc1cb] transition-colors list-none outline-none rounded px-2 -mx-2 hover:bg-[#353d49]/30">
+                    <span>Borders</span>
+                    <i class="pi pi-chevron-down transform group-open:rotate-180 transition-transform duration-200"></i>
+                </summary>
+                <div class="space-y-3 pt-2 pb-4 animate-fade-in">
+
+                    <!-- Borders -->
+                    <div>
+                        <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Border</label>
+                        <input type="text" [appTooltip]="'Set border (e.g. 1px solid red)'" [ngModel]="getStyle(block, 'border')" (ngModelChange)="updateStyle('border', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all placeholder-[#434d5d] shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30" placeholder="none">
+                    </div>
+                     <div>
+                        <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Radius</label>
+                        <input type="text" [appTooltip]="'Set border radius (e.g. 4px)'" [ngModel]="getStyle(block, 'borderRadius')" (ngModelChange)="updateStyle('borderRadius', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all placeholder-[#434d5d] shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30" placeholder="0px">
+                    </div>
+                </div>
+            </details>
+
+            <div class="h-px bg-[#434d5d]/50"></div>
+
+            <!-- Layout Engine -->
+             <details open class="group">
+                <summary class="flex items-center justify-between cursor-pointer py-2 text-xs font-bold text-[#7e8a9c] uppercase tracking-wider hover:text-[#bbc1cb] transition-colors list-none outline-none rounded px-2 -mx-2 hover:bg-[#353d49]/30">
+                    <span>Layout Engine</span>
+                    <i class="pi pi-chevron-down transform group-open:rotate-180 transition-transform duration-200"></i>
+                </summary>
+                <div class="space-y-3 pt-2 pb-4 animate-fade-in">
+                    <div>
+                        <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Display Mode</label>
+                        <div class="flex bg-[#353d49] p-1 rounded border border-[#434d5d]">
+                            <button [appTooltip]="'Block Layout'" class="flex-1 py-1 text-xs rounded transition-colors select-none" [class.bg-[#7089a2]]="getStyle(block, 'display') === 'block' || !getStyle(block, 'display')" [class.text-white]="getStyle(block, 'display') === 'block' || !getStyle(block, 'display')" (click)="updateStyle('display', 'block')">Block</button>
+                            <button [appTooltip]="'Flex Layout'" class="flex-1 py-1 text-xs rounded transition-colors select-none" [class.bg-[#7089a2]]="getStyle(block, 'display') === 'flex'" [class.text-white]="getStyle(block, 'display') === 'flex'" (click)="updateStyle('display', 'flex')">Flex</button>
+                             <button [appTooltip]="'Hide Element'" class="flex-1 py-1 text-xs rounded transition-colors select-none" [class.bg-[#7089a2]]="getStyle(block, 'display') === 'none'" [class.text-white]="getStyle(block, 'display') === 'none'" (click)="updateStyle('display', 'none')">None</button>
+                        </div>
+                    </div>
+
+                    @if (getStyle(block, 'display') === 'flex') {
+                        <div class="bg-[#353d49]/30 p-3 rounded border border-[#434d5d]/50 space-y-3 animate-fade-in">
+                             <div>
+                                <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Direction</label>
+                                <div class="flex gap-1">
+                                    <button [appTooltip]="'Row'" class="h-7 rounded-[4px] bg-[#262c35] border border-[#353d49] text-[#7e8a9c] flex items-center justify-center transition-all hover:bg-[#353d49] hover:text-white hover:border-[#434d5d] flex-1" [class.bg-[#7089a2]]="getStyle(block, 'flexDirection') === 'row' || !getStyle(block, 'flexDirection')" [class.border-[#7089a2]]="getStyle(block, 'flexDirection') === 'row' || !getStyle(block, 'flexDirection')" [class.text-white]="getStyle(block, 'flexDirection') === 'row' || !getStyle(block, 'flexDirection')" [class.shadow-sm]="getStyle(block, 'flexDirection') === 'row' || !getStyle(block, 'flexDirection')" (click)="updateStyle('flexDirection', 'row')"><i class="pi pi-arrow-right text-xs"></i></button>
+                                    <button [appTooltip]="'Column'" class="h-7 rounded-[4px] bg-[#262c35] border border-[#353d49] text-[#7e8a9c] flex items-center justify-center transition-all hover:bg-[#353d49] hover:text-white hover:border-[#434d5d] flex-1" [class.bg-[#7089a2]]="getStyle(block, 'flexDirection') === 'column'" [class.border-[#7089a2]]="getStyle(block, 'flexDirection') === 'column'" [class.text-white]="getStyle(block, 'flexDirection') === 'column'" [class.shadow-sm]="getStyle(block, 'flexDirection') === 'column'" (click)="updateStyle('flexDirection', 'column')"><i class="pi pi-arrow-down text-xs"></i></button>
+                                    <button [appTooltip]="'Row Reverse'" class="h-7 rounded-[4px] bg-[#262c35] border border-[#353d49] text-[#7e8a9c] flex items-center justify-center transition-all hover:bg-[#353d49] hover:text-white hover:border-[#434d5d] flex-1" [class.bg-[#7089a2]]="getStyle(block, 'flexDirection') === 'row-reverse'" [class.border-[#7089a2]]="getStyle(block, 'flexDirection') === 'row-reverse'" [class.text-white]="getStyle(block, 'flexDirection') === 'row-reverse'" [class.shadow-sm]="getStyle(block, 'flexDirection') === 'row-reverse'" (click)="updateStyle('flexDirection', 'row-reverse')"><i class="pi pi-arrow-left text-xs"></i></button>
+                                    <button [appTooltip]="'Column Reverse'" class="h-7 rounded-[4px] bg-[#262c35] border border-[#353d49] text-[#7e8a9c] flex items-center justify-center transition-all hover:bg-[#353d49] hover:text-white hover:border-[#434d5d] flex-1" [class.bg-[#7089a2]]="getStyle(block, 'flexDirection') === 'column-reverse'" [class.border-[#7089a2]]="getStyle(block, 'flexDirection') === 'column-reverse'" [class.text-white]="getStyle(block, 'flexDirection') === 'column-reverse'" [class.shadow-sm]="getStyle(block, 'flexDirection') === 'column-reverse'" (click)="updateStyle('flexDirection', 'column-reverse')"><i class="pi pi-arrow-up text-xs"></i></button>
+                                </div>
+                             </div>
+
+                             <div>
+                                <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Justify</label>
+                                <div class="flex gap-1">
+                                    <button [appTooltip]="'Start'" class="h-7 rounded-[4px] bg-[#262c35] border border-[#353d49] text-[#7e8a9c] flex items-center justify-center transition-all hover:bg-[#353d49] hover:text-white hover:border-[#434d5d] flex-1" [class.bg-[#7089a2]]="getStyle(block, 'justifyContent') === 'flex-start' || !getStyle(block, 'justifyContent')" [class.border-[#7089a2]]="getStyle(block, 'justifyContent') === 'flex-start' || !getStyle(block, 'justifyContent')" [class.text-white]="getStyle(block, 'justifyContent') === 'flex-start' || !getStyle(block, 'justifyContent')" [class.shadow-sm]="getStyle(block, 'justifyContent') === 'flex-start' || !getStyle(block, 'justifyContent')" (click)="updateStyle('justifyContent', 'flex-start')"><i class="pi pi-align-left text-xs"></i></button>
+                                    <button [appTooltip]="'Center'" class="h-7 rounded-[4px] bg-[#262c35] border border-[#353d49] text-[#7e8a9c] flex items-center justify-center transition-all hover:bg-[#353d49] hover:text-white hover:border-[#434d5d] flex-1" [class.bg-[#7089a2]]="getStyle(block, 'justifyContent') === 'center'" [class.border-[#7089a2]]="getStyle(block, 'justifyContent') === 'center'" [class.text-white]="getStyle(block, 'justifyContent') === 'center'" [class.shadow-sm]="getStyle(block, 'justifyContent') === 'center'" (click)="updateStyle('justifyContent', 'center')"><i class="pi pi-align-center text-xs"></i></button>
+                                    <button [appTooltip]="'End'" class="h-7 rounded-[4px] bg-[#262c35] border border-[#353d49] text-[#7e8a9c] flex items-center justify-center transition-all hover:bg-[#353d49] hover:text-white hover:border-[#434d5d] flex-1" [class.bg-[#7089a2]]="getStyle(block, 'justifyContent') === 'flex-end'" [class.border-[#7089a2]]="getStyle(block, 'justifyContent') === 'flex-end'" [class.text-white]="getStyle(block, 'justifyContent') === 'flex-end'" [class.shadow-sm]="getStyle(block, 'justifyContent') === 'flex-end'" (click)="updateStyle('justifyContent', 'flex-end')"><i class="pi pi-align-right text-xs"></i></button>
+                                    <button [appTooltip]="'Space Between'" class="h-7 rounded-[4px] bg-[#262c35] border border-[#353d49] text-[#7e8a9c] flex items-center justify-center transition-all hover:bg-[#353d49] hover:text-white hover:border-[#434d5d] flex-1" [class.bg-[#7089a2]]="getStyle(block, 'justifyContent') === 'space-between'" [class.border-[#7089a2]]="getStyle(block, 'justifyContent') === 'space-between'" [class.text-white]="getStyle(block, 'justifyContent') === 'space-between'" [class.shadow-sm]="getStyle(block, 'justifyContent') === 'space-between'" (click)="updateStyle('justifyContent', 'space-between')"><i class="pi pi-arrows-h text-xs"></i></button>
+                                </div>
+                             </div>
+
+                              <div>
+                                <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Align Items</label>
+                                <div class="flex gap-1">
+                                    <button [appTooltip]="'Start'" class="h-7 rounded-[4px] bg-[#262c35] border border-[#353d49] text-[#7e8a9c] flex items-center justify-center transition-all hover:bg-[#353d49] hover:text-white hover:border-[#434d5d] flex-1" [class.bg-[#7089a2]]="getStyle(block, 'alignItems') === 'flex-start'" [class.border-[#7089a2]]="getStyle(block, 'alignItems') === 'flex-start'" [class.text-white]="getStyle(block, 'alignItems') === 'flex-start'" [class.shadow-sm]="getStyle(block, 'alignItems') === 'flex-start'" (click)="updateStyle('alignItems', 'flex-start')"><i class="pi pi-angle-up text-xs"></i></button>
+                                    <button [appTooltip]="'Center'" class="h-7 rounded-[4px] bg-[#262c35] border border-[#353d49] text-[#7e8a9c] flex items-center justify-center transition-all hover:bg-[#353d49] hover:text-white hover:border-[#434d5d] flex-1" [class.bg-[#7089a2]]="getStyle(block, 'alignItems') === 'center'" [class.border-[#7089a2]]="getStyle(block, 'alignItems') === 'center'" [class.text-white]="getStyle(block, 'alignItems') === 'center'" [class.shadow-sm]="getStyle(block, 'alignItems') === 'center'" (click)="updateStyle('alignItems', 'center')"><i class="pi pi-align-center text-xs" style="transform: rotate(90deg)"></i></button>
+                                    <button [appTooltip]="'End'" class="h-7 rounded-[4px] bg-[#262c35] border border-[#353d49] text-[#7e8a9c] flex items-center justify-center transition-all hover:bg-[#353d49] hover:text-white hover:border-[#434d5d] flex-1" [class.bg-[#7089a2]]="getStyle(block, 'alignItems') === 'flex-end'" [class.border-[#7089a2]]="getStyle(block, 'alignItems') === 'flex-end'" [class.text-white]="getStyle(block, 'alignItems') === 'flex-end'" [class.shadow-sm]="getStyle(block, 'alignItems') === 'flex-end'" (click)="updateStyle('alignItems', 'flex-end')"><i class="pi pi-angle-down text-xs"></i></button>
+                                    <button [appTooltip]="'Stretch'" class="h-7 rounded-[4px] bg-[#262c35] border border-[#353d49] text-[#7e8a9c] flex items-center justify-center transition-all hover:bg-[#353d49] hover:text-white hover:border-[#434d5d] flex-1" [class.bg-[#7089a2]]="getStyle(block, 'alignItems') === 'stretch' || !getStyle(block, 'alignItems')" [class.border-[#7089a2]]="getStyle(block, 'alignItems') === 'stretch' || !getStyle(block, 'alignItems')" [class.text-white]="getStyle(block, 'alignItems') === 'stretch' || !getStyle(block, 'alignItems')" [class.shadow-sm]="getStyle(block, 'alignItems') === 'stretch' || !getStyle(block, 'alignItems')" (click)="updateStyle('alignItems', 'stretch')"><i class="pi pi-arrows-v text-xs"></i></button>
+                                </div>
+                             </div>
+
+                             <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Wrap</label>
+                                    <select [appTooltip]="'Control wrapping'" [ngModel]="getStyle(block, 'flexWrap')" (ngModelChange)="updateStyle('flexWrap', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all appearance-none cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.1)] pr-10 hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%237e8a9c%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25em_1.25em] bg-[position:right_0.5rem_center] bg-no-repeat">
+                                        <option value="nowrap">No Wrap</option>
+                                        <option value="wrap">Wrap</option>
+                                    </select>
+                                </div>
+                                 <div>
+                                    <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Gap</label>
+                                    <input type="text" [appTooltip]="'Set gap'" [ngModel]="getStyle(block, 'gap')" (ngModelChange)="updateStyle('gap', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all placeholder-[#434d5d] shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30">
+                                </div>
+                             </div>
+                        </div>
+                    }
+                </div>
+            </details>
+
+            <div class="h-px bg-[#434d5d]/50"></div>
+
+             <!-- Positioning -->
+             <details class="group">
+                <summary class="flex items-center justify-between cursor-pointer py-2 text-xs font-bold text-[#7e8a9c] uppercase tracking-wider hover:text-[#bbc1cb] transition-colors list-none outline-none rounded px-2 -mx-2 hover:bg-[#353d49]/30">
+                    <span>Positioning & Flex Child</span>
+                    <i class="pi pi-chevron-down transform group-open:rotate-180 transition-transform duration-200"></i>
+                </summary>
+                <div class="space-y-3 pt-2 pb-4 animate-fade-in">
+                     <div>
+                        <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Type</label>
+                         <select [appTooltip]="'Set positioning method'" [ngModel]="getStyle(block, 'position') || 'static'" (ngModelChange)="updateStyle('position', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all appearance-none cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.1)] pr-10 hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%237e8a9c%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25em_1.25em] bg-[position:right_0.5rem_center] bg-no-repeat">
+                            <option value="static">Static (Default)</option>
+                            <option value="relative">Relative</option>
+                            <option value="absolute">Absolute</option>
+                        </select>
+                    </div>
+
+                    @if (getStyle(block, 'position') === 'absolute') {
+                         <div class="grid grid-cols-2 gap-2 bg-[#353d49]/30 p-2 rounded border border-[#434d5d]/50 animate-fade-in">
+                            <div>
+                                <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Top</label>
+                                <input type="text" [appTooltip]="'Set top position'" [ngModel]="getStyle(block, 'top')" (ngModelChange)="updateStyle('top', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all placeholder-[#434d5d] shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30">
+                            </div>
+                             <div>
+                                <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Left</label>
+                                <input type="text" [appTooltip]="'Set left position'" [ngModel]="getStyle(block, 'left')" (ngModelChange)="updateStyle('left', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all placeholder-[#434d5d] shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30">
+                            </div>
+                             <div>
+                                <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Right</label>
+                                <input type="text" [appTooltip]="'Set right position'" [ngModel]="getStyle(block, 'right')" (ngModelChange)="updateStyle('right', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all placeholder-[#434d5d] shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30">
+                            </div>
+                             <div>
+                                <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Bottom</label>
+                                <input type="text" [appTooltip]="'Set bottom position'" [ngModel]="getStyle(block, 'bottom')" (ngModelChange)="updateStyle('bottom', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all placeholder-[#434d5d] shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30">
+                            </div>
+                            <div class="col-span-2">
+                                <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Z-Index</label>
+                                <input type="number" [appTooltip]="'Set stack order'" [ngModel]="getStyle(block, 'zIndex')" (ngModelChange)="updateStyle('zIndex', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all placeholder-[#434d5d] shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30">
+                            </div>
+                         </div>
+                    }
+
+                    <!-- Flex Child Props -->
+                     <div class="pt-2 border-t border-[#434d5d]/30 mt-2">
+                        <label class="mb-2 block text-[#bbc1cb] text-xs font-medium opacity-60">Flex Child Settings</label>
+                        <div class="grid grid-cols-2 gap-2">
+                             <div>
+                                <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Grow/Shrink</label>
+                                <input type="text" [appTooltip]="'Set grow/shrink (e.g. 1 1 auto)'" [ngModel]="getStyle(block, 'flex')" (ngModelChange)="updateStyle('flex', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all placeholder-[#434d5d] shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30" placeholder="0 1 auto">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Order</label>
+                                <input type="number" [appTooltip]="'Set layout order'" [ngModel]="getStyle(block, 'order')" (ngModelChange)="updateStyle('order', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all placeholder-[#434d5d] shadow-[0_1px_2px_rgba(0,0,0,0.1)] hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30">
+                            </div>
+                             <div class="col-span-2">
+                                <label class="block text-[10px] uppercase font-bold text-[#7e8a9c] mb-1.5 tracking-wider">Align Self</label>
+                                <select [appTooltip]="'Override alignment'" [ngModel]="getStyle(block, 'alignSelf')" (ngModelChange)="updateStyle('alignSelf', $event)" class="w-full bg-[#181c21] border border-[#353d49] rounded-[4px] px-2.5 py-1.5 text-xs text-[#bbc1cb] outline-none transition-all appearance-none cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.1)] pr-10 hover:border-[#434d5d] focus:border-[#7089a2] focus:bg-[#1f242b] focus:ring-1 focus:ring-[#7089a2]/30 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%237e8a9c%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25em_1.25em] bg-[position:right_0.5rem_center] bg-no-repeat">
+                                    <option [value]="undefined">Auto</option>
+                                    <option value="flex-start">Start</option>
+                                    <option value="center">Center</option>
+                                    <option value="flex-end">End</option>
+                                    <option value="stretch">Stretch</option>
+                                </select>
+                            </div>
+                        </div>
+                     </div>
+                </div>
+            </details>
+        </div>
+
+      } @else {
+         <div class="flex flex-col items-center justify-center h-full text-[#7e8a9c] opacity-50 select-none">
+           <i class="pi pi-box text-4xl mb-4"></i>
+           <p class="text-sm">Select a block to edit properties</p>
+        </div>
+      }
+    </div>
+  `,
+    styles: [`
+    /* Number inputs alignment */
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+      display: none;
+    }
+    input[type="number"] {
+        -moz-appearance: textfield;
+    }
+    
+    /* Custom Scrollbar for the panel */
+    .custom-scrollbar::-webkit-scrollbar { width: 10px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { 
+        background-color: #353d49; 
+        border: 3px solid transparent;
+        background-clip: content-box;
+        border-radius: 99px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #434d5d; }
+
+    summary::-webkit-details-marker {
+        display: none;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-2px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+        animation: fadeIn 0.15s ease-out;
+    }
+  `]
+})
+export class PropertyPanelComponent {
+    store = inject(TemplateStore);
+    cssStore = inject(CssStylesheetStore);
+
+    getStyle(block: any, prop: string): any {
+        const kebabProp = prop.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`);
+        return this.cssStore.getBlockStyles(block.cssClass)[kebabProp] || '';
+    }
+
+    getTypeIcon(type: string) {
+        switch (type) {
+            case 'container': return 'pi-box';
+            case 'text': return 'pi-align-left';
+            case 'textarea': return 'pi-file-edit';
+            case 'image': return 'pi-image';
+            case 'badge': return 'pi-tag';
+            default: return 'pi-circle';
+        }
+    }
+
+    update(field: string, value: any) {
+        if (this.store.selectedBlockId()) {
+            this.store.updateBlock(this.store.selectedBlockId()!, { [field]: value });
+        }
+    }
+
+    updateStyle(prop: string, value: any) {
+        if (this.store.selectedBlockId()) {
+            this.store.updateStyles(this.store.selectedBlockId()!, { [prop]: value });
+        }
+    }
+
+    getBgImage(block: any): string {
+        if (block.type === 'image') {
+            return block.content;
+        }
+        const bg = this.getStyle(block, 'backgroundImage');
+        if (!bg) return '';
+        // Extract URL from url('...') format if present
+        const match = bg.match(/url\(['"]?(.*?)['"]?\)/);
+        return match ? match[1] : bg;
+    }
+
+    updateBgImage(url: string) {
+        if (this.store.selectedBlock()?.type === 'image') {
+            this.update('content', url);
+            return;
+        }
+
+        if (!url) {
+            this.updateStyle('backgroundImage', '');
+            return;
+        }
+        // Wrap in url() if it doesn't start with url(
+        if (!url.trim().toLowerCase().startsWith('url(')) {
+            this.updateStyle('backgroundImage', `url('${url}')`);
+        } else {
+            this.updateStyle('backgroundImage', url);
+        }
+    }
+}
