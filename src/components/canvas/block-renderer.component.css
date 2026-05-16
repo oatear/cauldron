@@ -1,0 +1,5 @@
+.selected-block {
+  outline: 3px solid #3b82f6; /* blue-500 */
+  outline-offset: -1px; /* Slightly inset to ensure visibility */
+  z-index: 20; /* Ensure it sits above siblings if positioned */
+}

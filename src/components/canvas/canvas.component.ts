@@ -9,79 +9,8 @@ import { SnapGuide } from '../../types';
     selector: 'app-canvas',
     standalone: true,
     imports: [CommonModule, BlockRendererComponent],
-    template: `
-    <div class="w-full h-full relative flex flex-col bg-[#181c21] checkboard overflow-hidden">
-
-        <!-- Scrollable Viewport -->
-        <div 
-          class="flex-1 overflow-auto flex items-center justify-center p-10 outline-none" 
-          #scrollContainer
-          (click)="bgClick($event)"
-          (mouseup)="onMouseUp()"
-          (mousemove)="onMouseMove($event)"
-          (mouseleave)="onMouseUp()"
-          (dragover)="onDragOver($event)"
-          (drop)="onDrop($event)"
-        >
-            <!-- Sizing Wrapper (Ensures scrollbars and centering work correctly) -->
-            <div 
-               [style.width.px]="scaledWidth()" 
-               [style.height.px]="scaledHeight()" 
-               class="relative flex-shrink-0 transition-all duration-200 ease-out"
-            >
-                <!-- Scaled Content -->
-                <div 
-                  class="absolute top-0 left-0 origin-top-left shadow-2xl"
-                  #cardContainer
-                  [style.transform]="'scale(' + zoom() + ')'"
-                >
-                    <app-block-renderer 
-                      [block]="store.rootBlock()" 
-                      (mousedown)="onMouseDown($event)"
-                    ></app-block-renderer>
-                    
-                    <!-- Snap Guides for Dragging -->
-                    @for (guide of guides(); track $index) {
-                        <div 
-                            class="absolute bg-[#7089a2] z-[100] pointer-events-none"
-                            [style.left.px]="guide.type === 'vertical' ? guide.position - 1 : 0"
-                            [style.top.px]="guide.type === 'horizontal' ? guide.position - 1 : 0"
-                            [style.width]="guide.type === 'vertical' ? '2px' : '100%'"
-                            [style.height]="guide.type === 'horizontal' ? '2px' : '100%'"
-                        ></div>
-                    }
-
-                    <!-- Global Snap Guides (Resizing) -->
-                    @if (store.snapGuides().x !== null) {
-                        <div class="fixed top-0 bottom-0 border-l-2 border-dashed border-red-500 pointer-events-none z-[100]" [style.left.px]="store.snapGuides().x - 1"></div>
-                    }
-                    @if (store.snapGuides().y !== null) {
-                        <div class="fixed left-0 right-0 border-t-2 border-dashed border-red-500 pointer-events-none z-[100]" [style.top.px]="store.snapGuides().y - 1"></div>
-                    }
-                </div>
-            </div>
-        </div>
-
-        <!-- Zoom Controls -->
-        <div class="absolute bottom-8 right-8 flex items-center gap-2 bg-[#262c35] p-2 rounded-[10px] shadow-xl border border-[#434d5d] z-50">
-            <button (click)="adjustZoom(-0.1)" class="w-8 h-8 flex items-center justify-center rounded-[8px] hover:bg-[#353d49] text-[#bbc1cb] hover:text-white transition-colors" title="Zoom Out">
-                <i class="pi pi-minus"></i>
-            </button>
-            
-            <button 
-                (click)="toggleZoom()" 
-                class="w-12 h-8 flex items-center justify-center rounded-[8px] hover:bg-[#353d49] text-sm font-mono text-[#bbc1cb] hover:text-white transition-colors select-none"
-                title="Toggle Zoom (100% / Fit)"
-            >
-                {{ (zoom() * 100).toFixed(0) }}%
-            </button>
-
-            <button (click)="adjustZoom(0.1)" class="w-8 h-8 flex items-center justify-center rounded-[8px] hover:bg-[#353d49] text-[#bbc1cb] hover:text-white transition-colors" title="Zoom In">
-                <i class="pi pi-plus"></i>
-            </button>
-        </div>
-    </div>
-  `
+    templateUrl: './canvas.component.html',
+    styleUrls: ['./canvas.component.css']
 })
 export class CanvasComponent {
     store = inject(TemplateStore);
@@ -106,23 +35,58 @@ export class CanvasComponent {
     scaledWidth = computed(() => this.cardWidth() * this.zoom());
     scaledHeight = computed(() => this.cardHeight() * this.zoom());
 
+    pan = signal({ x: 0, y: 0 });
+    isPanning = signal(false);
+
     // Drag State
     dragStart = { x: 0, y: 0 };
     initialPos = { left: 0, top: 0 };
+    initialPan = { x: 0, y: 0 };
 
     guides = signal<SnapGuide[]>([]);
     SNAP_THRESHOLD = 5;
 
-    adjustZoom(delta: number) {
-        const newZoom = Math.max(0.1, Math.min(3.0, this.zoom() + delta));
+    resetPan() {
+        this.pan.set({ x: 0, y: 0 });
+    }
+
+    adjustZoom(delta: number, centerX?: number, centerY?: number) {
+        const oldZoom = this.zoom();
+        const newZoom = Math.max(0.1, Math.min(5.0, oldZoom + delta));
+        
+        if (centerX !== undefined && centerY !== undefined) {
+            // Zoom towards mouse position
+            const currentPan = this.pan();
+            const ratio = newZoom / oldZoom;
+            
+            const newPanX = centerX - (centerX - currentPan.x) * ratio;
+            const newPanY = centerY - (centerY - currentPan.y) * ratio;
+            
+            this.pan.set({ x: newPanX, y: newPanY });
+        }
+        
         this.zoom.set(parseFloat(newZoom.toFixed(2)));
+    }
+
+    onWheel(e: WheelEvent) {
+        e.preventDefault();
+        const delta = -e.deltaY * 0.001;
+        
+        // Use scroll container rect to get relative mouse position
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const centerX = e.clientX - rect.left - rect.width / 2;
+        const centerY = e.clientY - rect.top - rect.height / 2;
+
+        this.adjustZoom(delta, centerX, centerY);
     }
 
     toggleZoom() {
         if (Math.abs(this.zoom() - 1) < 0.01) {
             this.fitToScreen();
+            this.resetPan();
         } else {
             this.zoom.set(1);
+            this.resetPan();
         }
     }
 
@@ -145,13 +109,19 @@ export class CanvasComponent {
         this.zoom.set(parseFloat(fitScale.toFixed(2)));
     }
 
-    bgClick(e: MouseEvent) {
-        if (e.target === e.currentTarget || e.target === this.scrollContainer()?.nativeElement) {
+    onBgMouseDown(e: MouseEvent) {
+        if (e.button === 1 || (e.button === 0 && (e.target === e.currentTarget || e.target === this.scrollContainer()?.nativeElement))) {
+            this.isPanning.set(true);
+            this.dragStart = { x: e.clientX, y: e.clientY };
+            this.initialPan = { ...this.pan() };
             this.store.selectBlock(null);
+            e.preventDefault();
         }
     }
 
-    onMouseDown(e: MouseEvent) {
+    onBlockMouseDown(e: MouseEvent) {
+        if (e.button !== 0) return; // Only LMB for block dragging
+
         const target = e.target as HTMLElement;
         // Find the closest block element
         const blockEl = target.closest('[data-block-id]') as HTMLElement;
@@ -161,12 +131,15 @@ export class CanvasComponent {
         if (!blockId || blockId === 'root') return;
 
         const block = this.store.findBlock(this.store.rootBlock(), blockId);
-        if (block?.styles['position'] === 'absolute') {
+        if (!block) return;
+
+        const styles = this.cssStore.getBlockStyles(block.cssClass);
+        if (styles['position'] === 'absolute') {
             this.store.setDraggingBlockId(blockId);
             this.dragStart = { x: e.clientX, y: e.clientY };
 
-            const currentLeft = parseFloat(String(block.styles['left'] || blockEl.offsetLeft));
-            const currentTop = parseFloat(String(block.styles['top'] || blockEl.offsetTop));
+            const currentLeft = parseFloat(String(styles['left'] || blockEl.offsetLeft));
+            const currentTop = parseFloat(String(styles['top'] || blockEl.offsetTop));
 
             this.initialPos = {
                 left: isNaN(currentLeft) ? blockEl.offsetLeft : currentLeft,
@@ -174,10 +147,23 @@ export class CanvasComponent {
             };
 
             e.preventDefault(); // Prevent text selection
+            e.stopPropagation(); // Prevent background panning
         }
     }
 
     onMouseMove(e: MouseEvent) {
+        // Handle Panning
+        if (this.isPanning()) {
+            const dx = e.clientX - this.dragStart.x;
+            const dy = e.clientY - this.dragStart.y;
+            this.pan.set({
+                x: this.initialPan.x + dx,
+                y: this.initialPan.y + dy
+            });
+            return;
+        }
+
+        // Handle Block Dragging
         const draggingId = this.store.draggingBlockId();
         if (!draggingId) return;
 
@@ -207,6 +193,7 @@ export class CanvasComponent {
 
     onMouseUp() {
         this.store.setDraggingBlockId(null);
+        this.isPanning.set(false);
         this.guides.set([]);
     }
 

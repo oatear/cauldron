@@ -10,60 +10,8 @@ import { TemplateStore } from '../../services/template.store';
   host: {
     'style': 'display: contents'
   },
-  template: `
-    <div 
-        [id]="'block-' + block().id"
-        [attr.data-block-id]="block().id"
-        [class]="blockClassList()"
-        [class.transition-all]="!isDragging() && !isResizing()"
-        [class.duration-75]="!isDragging() && !isResizing()"
-        [class.selected-block]="isSelected()"
-        (click)="select($event)"
-        (contextmenu)="onContextMenu($event)"
-    >
-         <!-- Resize Handles -->
-         @if (isSelected()) {
-            @for (handle of resizeHandles; track handle) {
-                <div 
-                    class="absolute w-2.5 h-2.5 bg-white border border-[#3b82f6] z-30"
-                    [class.cursor-nw-resize]="handle === 'nw'"
-                    [class.cursor-n-resize]="handle === 'n'"
-                    [class.cursor-ne-resize]="handle === 'ne'"
-                    [class.cursor-w-resize]="handle === 'w'"
-                    [class.cursor-e-resize]="handle === 'e'"
-                    [class.cursor-sw-resize]="handle === 'sw'"
-                    [class.cursor-s-resize]="handle === 's'"
-                    [class.cursor-se-resize]="handle === 'se'"
-                    [style.top]="handle.includes('n') ? '-5px' : handle.includes('s') ? 'calc(100% - 5px)' : 'calc(50% - 5px)'"
-                    [style.left]="handle.includes('w') ? '-5px' : handle.includes('e') ? 'calc(100% - 5px)' : 'calc(50% - 5px)'"
-                    (mousedown)="onResizeStart($event, handle)"
-                    (click)="$event.stopPropagation()"
-                ></div>
-            }
-         }
-
-        <!-- Content Rendering -->
-        @if (block().type !== 'image') {
-           @if (block().innerHTML) {
-             <div [innerHTML]="block().innerHTML"></div>
-           } @else if (block().content) {
-             {{ block().content }}
-           }
-        }
-
-        <!-- Recursive Children -->
-        @for (child of block().children; track child.id) {
-            <app-block-renderer [block]="child"></app-block-renderer>
-        }
-    </div>
-  `,
-  styles: [`
-    .selected-block {
-      outline: 3px solid #3b82f6; /* blue-500 */
-      outline-offset: -1px; /* Slightly inset to ensure visibility */
-      z-index: 20; /* Ensure it sits above siblings if positioned */
-    }
-  `]
+  templateUrl: './block-renderer.component.html',
+  styleUrls: ['./block-renderer.component.css']
 })
 export class BlockRendererComponent {
   block = input.required<Block>();

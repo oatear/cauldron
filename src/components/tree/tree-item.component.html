@@ -1,0 +1,74 @@
+<div 
+  class="pl-4 select-none relative my-0.5"
+  [class.opacity-50]="isDragging()"
+>
+  <!-- Drop Position Indicators -->
+  @if (dropPosition() === 'top') {
+     <div class="absolute top-0 left-2 right-0 h-0.5 bg-[#3b82f6] z-50 rounded pointer-events-none shadow-[0_0_4px_#3b82f6]"></div>
+  }
+  @if (dropPosition() === 'bottom') {
+     <div class="absolute bottom-0 left-2 right-0 h-0.5 bg-[#3b82f6] z-50 rounded pointer-events-none shadow-[0_0_4px_#3b82f6]"></div>
+  }
+
+  <div 
+    class="flex items-center gap-2 px-3 py-1 cursor-pointer group transition-all duration-200"
+    [ngClass]="containerClasses"
+    [style.clip-path]="'polygon(10px 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 10px 100%, 0 50%)'"
+    (click)="select($event)"
+    [attr.draggable]="!block().isRoot"
+    (dragstart)="onDragStart($event)"
+    (dragover)="onDragOver($event)"
+    (drop)="onDrop($event)"
+    (dragleave)="onDragLeave($event)"
+    (dragend)="onDragEnd($event)"
+    (contextmenu)="onContextMenu($event)"
+  >
+    <button 
+      class="w-5 h-5 flex items-center justify-center rounded hover:bg-black/20 transition-colors"
+      [class.text-white]="isSelected()"
+      [class.text-[#7e8a9c]]="!isSelected()"
+      (click)="toggleExpand($event)"
+      [style.visibility]="block().children.length > 0 ? 'visible' : 'hidden'"
+    >
+      <i class="pi text-[10px]" [class.pi-chevron-down]="block().expanded" [class.pi-chevron-right]="!block().expanded"></i>
+    </button>
+
+    <i class="pi text-sm opacity-70" 
+       [class]="getTypeIcon(block().type)"
+       [class.text-white]="isSelected()"
+       [class.text-[#7e8a9c]]="!isSelected()">
+    </i>
+    
+    <span class="text-sm font-medium truncate flex-1 leading-tight">{{ block().name }}</span>
+
+    <!-- Position Indicator -->
+    @if (getPositionLabel(); as pos) {
+        <span class="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase tracking-wider font-bold">
+            {{ pos }}
+        </span>
+    }
+
+    <!-- Display Indicator -->
+    @if (getDisplayLabel(); as disp) {
+        <span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wider font-bold">
+            {{ disp }}
+        </span>
+    }
+    
+    <button 
+        class="opacity-0 group-hover:opacity-100 px-2 py-0.5 rounded hover:bg-red-500/20 hover:text-red-400 transition-all" 
+        title="Delete"
+        (click)="deleteBlock($event)"
+        [hidden]="block().isRoot">
+        <i class="pi pi-trash text-xs"></i>
+    </button>
+  </div>
+
+  @if (block().expanded && block().children.length > 0) {
+    <div class="border-l border-[#434d5d]/50 ml-3">
+      @for (child of block().children; track child.id) {
+        <app-tree-item [block]="child"></app-tree-item>
+      }
+    </div>
+  }
+</div>

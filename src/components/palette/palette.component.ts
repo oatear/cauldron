@@ -8,22 +8,7 @@ import { inject } from '@angular/core';
   selector: 'app-palette',
   standalone: true,
   imports: [CommonModule],
-  template: `
-    <div class="grid grid-cols-4 gap-2 p-2">
-      @for (item of items; track item.type) {
-        <div 
-          class="aspect-square bg-[#353d49] border border-[#434d5d] rounded-[8px] flex flex-col items-center justify-center cursor-grab active:cursor-grabbing hover:bg-[#434d5d] hover:border-[#7089a2] hover:shadow transition-all group p-1"
-          draggable="true"
-          (dragstart)="onDragStart($event, item.type)"
-          (dragend)="onDragEnd($event)"
-          [title]="item.label"
-        >
-          <i class="pi {{item.icon}} text-lg text-[#bbc1cb] group-hover:text-white group-hover:scale-110 transition-transform"></i>
-        </div>
-      }
-    </div>
-  `,
-  styles: []
+  templateUrl: './palette.component.html'
 })
 export class PaletteComponent {
   store = inject(TemplateStore);
